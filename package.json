@@ -1,0 +1,23 @@
+{
+  "name": "atom-test-runner",
+  "main": "./index.js",
+  "version": "0.0.0",
+  "description": "A short description of your package",
+  "keywords": [],
+  "repository": "https://github.com/atom/atom-test-runner",
+  "license": "MIT",
+  "engines": {
+    "atom": ">=1.0.0 <2.0.0"
+  },
+  "dependencies": {
+    "elm": "^0.19.0-bugfix6",
+    "parcel": "^1.12.3",
+    "parcel-bundler": "^1.12.3",
+    "webpack": "^4.32.2"
+  },
+  "devDependencies": {
+    "elm-webpack-loader": "git+https://github.com/Borzik/elm-webpack-loader.git#remove-elm",
+    "node-elm-compiler": "^5.0.3",
+    "webpack-cli": "^3.3.2"
+  }
+}
