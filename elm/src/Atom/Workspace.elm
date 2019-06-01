@@ -13,11 +13,6 @@ import Json.Decode as JD
 import Platform
 
 
-addGutter : Gutter -> TextEditor -> Cmd msg
-addGutter gutter editor =
-    Ports.addTextEditorGutter ( Gutter.encode gutter, TextEditor.id editor )
-
-
 
 --- modal
 
@@ -59,7 +54,7 @@ update msg model =
         NewTextEditor editor ->
             let
                 cmd =
-                    addGutter (Gutter.withName "fucker") editor
+                    TextEditor.addGutter (Gutter.withName "fucker") editor
             in
             ( { model | editors = editor :: model.editors }, cmd )
 
