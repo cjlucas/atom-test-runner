@@ -1,7 +1,10 @@
 module Atom.TextEditor exposing
-    ( TextEditor
+    ( Msg
+    , TextEditor
     , addGutter
     , decode
+    , decoder
+    , equal
     )
 
 import Atom.Gutter as Gutter exposing (Gutter)
@@ -47,3 +50,12 @@ rawId (TextEditor internals) =
             internals.id
     in
     id_
+
+
+type Msg
+    = GutterAdded Gutter
+    | GutterRemoved Gutter
+
+
+equal textEditorA textEditorB =
+    rawId textEditorA == rawId textEditorB

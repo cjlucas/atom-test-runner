@@ -2,6 +2,7 @@ port module Atom.Ports exposing
     ( addTextEditorGutter
     , didDestroyEditor
     , observeActiveTextEditor
+    , observeGutters
     , observeTextEditors
     )
 
@@ -27,3 +28,6 @@ port addTextEditorGutter : ( String, Int ) -> Cmd msg
 
 
 port didDestroyEditor : (Json.Decode.Value -> msg) -> Sub msg
+
+
+port observeGutters : (Json.Decode.Value -> msg) -> Sub msg

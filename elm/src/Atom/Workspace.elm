@@ -46,7 +46,20 @@ type Msg
     = NewTextEditor TextEditor
     | NewActiveTextEditor (Maybe TextEditor)
     | TextEditorDestroyed TextEditor
+    | GutterAdded Gutter TextEditor
     | NoOp
+
+
+updateTextEditor : TextEditor -> Model -> Model
+updateTextEditor textEditor model =
+    let
+        notEqual editor =
+            not << TextEditor.equal editor
+
+        editors =
+            List.filter (notEqual textEditor) model.editors
+    in
+    { model | editors = textEditor :: editors }
 
 
 update msg model =
@@ -67,6 +80,13 @@ update msg model =
                     List.filter (\editor_ -> editor /= editor) model.editors
             in
             ( { model | editors = editors }, Cmd.none )
+
+        TextEditorMsg textEditor textEditorMsg ->
+            let
+                ( textEditor_, textEditorCmd ) =
+                    TextEditor.update textEditorMsg textEditor
+            in
+            ( updateTextEditor textEditor_ model, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
@@ -97,8 +117,13 @@ decodeActiveTextEditor value =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
+    let
+        editorSubscriptions editor =
+            Sub.map (TextEditorMsg editor) (TextEditor.subscriptions editor)
+    in
     Sub.batch
         [ Ports.observeTextEditors (decodeTextEditor NewTextEditor)
         , Ports.observeActiveTextEditor decodeActiveTextEditor
         , Ports.didDestroyEditor (decodeTextEditor TextEditorDestroyed)
+        , Sub.batch (List.map editorSubscriptions model.editors)
         ]

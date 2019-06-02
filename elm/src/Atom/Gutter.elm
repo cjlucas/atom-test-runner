@@ -1,11 +1,13 @@
 module Atom.Gutter exposing
     ( Gutter
+    , decoder
     , encode
     , setPriority
     , setVisiblity
     , withName
     )
 
+import Json.Decode as JD
 import Json.Encode as JE
 
 
@@ -26,6 +28,14 @@ encode (Gutter internals) =
             JE.object [ ( "name", JE.string internals.name ) ]
     in
     JE.encode 0 encoder
+
+
+decoder =
+    JD.map3 Internals
+        (JD.field "name" JD.string)
+        (JD.succeed Nothing)
+        (JD.succeed Nothing)
+        |> JD.map Gutter
 
 
 withName name =
