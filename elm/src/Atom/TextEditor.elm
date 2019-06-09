@@ -1,15 +1,13 @@
 module Atom.TextEditor exposing
     ( Msg
+    , PrimativeTextEditor
     , TextEditor
-    , addGutter
-    , decode
-    , decoder
     , equal
+    , fromPrimative
+    , toPrimative
     )
 
 import Atom.Gutter as Gutter exposing (Gutter)
-import Atom.Ports as Ports
-import Json.Decode as JD
 
 
 type ID
@@ -20,28 +18,28 @@ type TextEditor
     = TextEditor Internals
 
 
+type alias PrimativeTextEditor =
+    { id : Int
+    }
+
+
+fromPrimative primative =
+    TextEditor { id = ID primative.id }
+
+
+toPrimative editor =
+    { id = rawId editor }
+
+
 type alias Internals =
     { id : ID
     }
 
 
-decodeID =
-    JD.map ID JD.int
 
-
-decoder =
-    JD.map Internals (JD.field "id" decodeID)
-        |> JD.map TextEditor
-
-
-decode : JD.Value -> Result JD.Error TextEditor
-decode value =
-    JD.decodeValue decoder value
-
-
-addGutter : Gutter -> TextEditor -> Cmd msg
-addGutter gutter editor =
-    Ports.addTextEditorGutter ( Gutter.encode gutter, rawId editor )
+-- addGutter : Gutter -> TextEditor -> Cmd msg
+-- addGutter gutter editor =
+--     Ports.addTextEditorGutter ( Gutter.encode gutter, rawId editor )
 
 
 rawId (TextEditor internals) =

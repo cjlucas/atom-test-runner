@@ -1,9 +1,10 @@
 module Atom.Gutter exposing
     ( Gutter
-    , decoder
-    , encode
+    , PrimativeGutter
+    , fromPrimative
     , setPriority
     , setVisiblity
+    , toPrimative
     , withName
     )
 
@@ -12,30 +13,22 @@ import Json.Encode as JE
 
 
 type Gutter
-    = Gutter Internals
+    = Gutter PrimativeGutter
 
 
-type alias Internals =
+type alias PrimativeGutter =
     { name : String
     , priority : Maybe Int
     , visible : Maybe Bool
     }
 
 
-encode (Gutter internals) =
-    let
-        encoder =
-            JE.object [ ( "name", JE.string internals.name ) ]
-    in
-    JE.encode 0 encoder
+fromPrimative primative =
+    Gutter primative
 
 
-decoder =
-    JD.map3 Internals
-        (JD.field "name" JD.string)
-        (JD.succeed Nothing)
-        (JD.succeed Nothing)
-        |> JD.map Gutter
+toPrimative (Gutter primative) =
+    primative
 
 
 withName name =
