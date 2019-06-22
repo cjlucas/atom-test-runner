@@ -1,59 +1,162 @@
 module Main exposing (main)
 
-import Atom.Workspace
-import Platform
+import Browser
+import Element
+import Element.Font as Font
+import Html exposing (span, text)
+import Html.Attributes exposing (class)
+import Ports
+import TestResults exposing (TestResults)
 
 
-
---- modal
-
-
-type alias Model =
-    { workspace : Atom.Workspace.Model }
+type alias Flags =
+    {}
 
 
+main : Program Flags Model Msg
 main =
-    Platform.worker
+    Browser.element
         { init = init
+        , view = view
         , update = update
         , subscriptions = subscriptions
         }
 
 
 
---- INIT
+--- MODEL
 
 
-init : Int -> ( Model, Cmd msg )
-init flags =
-    let
-        ( workspace, cmd ) =
-            Atom.Workspace.init
-    in
-    ( { workspace = workspace }, cmd )
-
-
-
---- UPDATE
+type alias Model =
+    { testResults : TestResults }
 
 
 type Msg
-    = AtomWorkspaceMsg Atom.Workspace.Msg
+    = InsertTest Ports.Test
 
 
+mockTests =
+    TestResults.empty
+        |> TestResults.add "should increment the total"
+            [ "Order", "#add_total" ]
+            ( Nothing, Just 10 )
+            TestResults.Failed
+        |> TestResults.add "should return true"
+            [ "Order", "#add_total" ]
+            ( Nothing, Just 15 )
+            TestResults.Passed
+
+
+init flags =
+    Debug.log "in init" ( { testResults = TestResults.empty }, Cmd.none )
+
+
+insertTest : Ports.Test -> Model -> Model
+insertTest portTest model =
+    let
+        status =
+            case portTest.status of
+                "pass" ->
+                    TestResults.Passed
+
+                "fail" ->
+                    TestResults.Failed
+
+                _ ->
+                    TestResults.Pending
+    in
+    { model
+        | testResults =
+            TestResults.add portTest.name
+                portTest.suitePath
+                portTest.location
+                status
+                model.testResults
+    }
+
+
+update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
-        AtomWorkspaceMsg workspaceMsg ->
+        InsertTest portTest ->
+            ( insertTest portTest model, Cmd.none )
+
+
+edges =
+    { top = 0
+    , left = 0
+    , right = 0
+    , bottom = 0
+    }
+
+
+icon status =
+    let
+        color =
+            case status of
+                TestResults.Passed ->
+                    Element.rgb255 0 255 0
+
+                TestResults.Failed ->
+                    Element.rgb255 255 0 0
+
+                TestResults.Skipped ->
+                    Element.rgb255 0 0 255
+
+                TestResults.Errored ->
+                    Element.rgb255 200 200 200
+
+                TestResults.Pending ->
+                    Element.rgb255 100 100 100
+    in
+    Element.el
+        [ Element.htmlAttribute (class "icon icon-x")
+        , Font.color color
+        ]
+        Element.none
+
+
+indent =
+    Element.paddingEach { edges | left = 20 }
+
+
+viewTopLevelTest =
+    viewTest 0
+
+
+viewTest level testResult =
+    case Debug.log "viewTest" (TestResults.results testResult) of
+        [] ->
+            Element.el [ indent ] <|
+                Element.row []
+                    [ icon (TestResults.status testResult)
+                    , Element.text (TestResults.testName testResult)
+                    ]
+
+        childTests ->
             let
-                ( workspace, workspaceCmd ) =
-                    Atom.Workspace.update workspaceMsg model.workspace
+                children =
+                    [ Element.row []
+                        [ icon (TestResults.status testResult)
+                        , Element.text (TestResults.testName testResult)
+                        ]
+                    ]
+                        ++ List.map (viewTest (level + 1)) childTests
             in
-            ( { workspace = workspace }, Cmd.map AtomWorkspaceMsg workspaceCmd )
+            Element.column [ indent ] children
 
 
+white =
+    Element.rgb255 255 255 255
 
---- SUBSCRIPTIONS
+
+view : Model -> Html.Html Msg
+view model =
+    Element.layout [ Element.explain Debug.todo ] <|
+        Element.column [ Font.color white ] <|
+            List.map viewTopLevelTest (TestResults.toList model.testResults)
 
 
+subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.map AtomWorkspaceMsg (Atom.Workspace.subscriptions model.workspace)
+    Ports.testUpdate InsertTest

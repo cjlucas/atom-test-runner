@@ -4,9 +4,6 @@
 // for a full listing of what's available.
 @import "ui-variables";
 
-.atom-test-runner {
-}
-
 .red {
     background-color: red;
     width: 50px;
@@ -15,4 +12,51 @@
 .blue {
     color: blue;
     background-color: green;
+}
+
+.atom-test-runner-circle {
+    border-radius: 50%;
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=60)";
+    filter: alpha(opacity=60);
+    opacity: 0.6;
+
+    -webkit-box-shadow: 0 0 1px 0px rgb( 255, 255, 255);
+    box-shadow: 0 0 1px 0px rgb( 255, 255, 255);
+    width: 10px;
+    height: 10px;
+    z-index: 86;
+
+    // -webkit-transition: background-color .5s ease-in-out;
+    // -moz-transition: background-color .5s ease-in-out;
+    // -o-transition: background-color .5s ease-in-out;
+    // -ms-transition: background-color .5s ease-in-out;
+    // transition: background-color .5s ease-in-out;
+}
+
+.atom-test-runner-status-pending {
+    border: 1px solid @text-color-info;
+    background-color: @text-color-info;
+}
+
+.atom-test-runner-status-error {
+    border: 1px solid @text-color-error;
+    background-color: @text-color-error;
+}
+
+.atom-test-runner-status-success {
+    border: 1px solid @text-color-success;
+    background-color: @text-color-success;
+}
+
+.atom-test-runner-status-skip {
+    border: 1px solid @text-color-warning;
+    background-color: @text-color-warning;
+}
+
+.good {
+  color: @text-color-success;
+}
+
+.bad {
+  color: @text-color-error;
 }

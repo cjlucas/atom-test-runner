@@ -1,35 +1,41 @@
 module TestResults exposing
-    ( Model
-    , Msg
-    , OutMsg(..)
-    , getTests
-    , init
-    , subscriptions
-    , update
+    ( Result(..)
+    , TestResults
+    , TestStatus(..)
+    , add
+    , empty
+    , results
+    , status
+    , testName
+    , toList
     )
+
+import OrderedDict exposing (OrderedDict)
 
 
 type ID
     = ID String
 
 
-type TestRepresentable
-    = TestContainer TestContainerInternals
+type Result
+    = Suite SuiteInternals
     | Test TestInternals
 
 
-type alias TestContainerInternals =
-    { id : ID
-    , name : String
-    , lineNumber : Maybe Int
-    , tests : List TestRepresentable
+type alias TestLocation =
+    ( Maybe String, Maybe Int )
+
+
+type alias SuiteInternals =
+    { name : String
+    , location : TestLocation
+    , results : OrderedDict String Result
     }
 
 
 type alias TestInternals =
-    { id : ID
-    , name : String
-    , lineNumber : Maybe Int
+    { name : String
+    , location : TestLocation
     , status : TestStatus
     }
 
@@ -42,39 +48,87 @@ type TestStatus
     | Skipped
 
 
-type alias Model =
-    { tests : List TestRepresentable }
+type TestResults
+    = TestResults (OrderedDict String Result)
 
 
-type Msg
-    = AddTest TestRepresentable
-    | UpdateTestStatus ID TestStatus
+empty =
+    TestResults OrderedDict.empty
 
 
-type OutMsg
-    = None
+status result =
+    case result of
+        Suite _ ->
+            Failed
+
+        Test test ->
+            test.status
 
 
-getTests : Model -> List TestRepresentable
-getTests model =
-    model.tests
+testName result =
+    case result of
+        Test test ->
+            test.name
+
+        Suite suite ->
+            suite.name
 
 
-init : Model
-init =
-    { tests = [] }
+results : Result -> List Result
+results result =
+    case result of
+        Test _ ->
+            []
+
+        Suite suite ->
+            OrderedDict.values suite.results
 
 
-updateTestStatus : Model -> String -> TestStatus -> Model
-updateTestStatus model string status =
-    { tests = [] }
+toList : TestResults -> List Result
+toList (TestResults testResults) =
+    OrderedDict.values testResults
 
 
-update : Model -> Msg -> ( Model, Cmd Msg, Maybe OutMsg )
-update model msg =
-    ( model, Cmd.none, Nothing )
+add : String -> List String -> TestLocation -> TestStatus -> TestResults -> TestResults
+add name suitePath location testStatus (TestResults testResults) =
+    let
+        testInternals =
+            { name = name
+            , location = location
+            , status = testStatus
+            }
+    in
+    TestResults (addTest testInternals suitePath testResults)
 
 
-subscriptions : Sub Msg
-subscriptions =
-    Sub.none
+addTest : TestInternals -> List String -> OrderedDict String Result -> OrderedDict String Result
+addTest testInternals suitePath testResults =
+    case suitePath of
+        [] ->
+            OrderedDict.insert testInternals.name (Test testInternals) testResults
+
+        suiteName :: rest ->
+            case OrderedDict.get suiteName testResults of
+                Just (Test test_) ->
+                    testResults
+
+                Just (Suite suite) ->
+                    let
+                        results_ =
+                            addTest testInternals rest suite.results
+
+                        suite_ =
+                            Suite { suite | results = results_ }
+                    in
+                    OrderedDict.insert suite.name suite_ testResults
+
+                Nothing ->
+                    let
+                        suite =
+                            Suite
+                                { name = suiteName
+                                , location = ( Nothing, Nothing )
+                                , results = addTest testInternals rest OrderedDict.empty
+                                }
+                    in
+                    OrderedDict.insert suiteName suite testResults

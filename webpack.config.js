@@ -22,7 +22,7 @@ module.exports = {
   },
   entry: () => './lib/atom-test-runner.js',
   externals: [
-    'atom', 
+    'atom',
     './build/Release/tree_sitter_runtime_binding',
     './build/Release/tree_sitter_elm_binding',
     './build/Debug/tree_sitter_runtime_binding',
