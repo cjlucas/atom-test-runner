@@ -116,8 +116,8 @@ icon status =
         Element.none
 
 
-indent =
-    Element.paddingEach { edges | left = 20 }
+indent level =
+    Element.paddingEach { edges | left = level * 20 }
 
 
 viewTopLevelTest =
@@ -125,25 +125,11 @@ viewTopLevelTest =
 
 
 viewTest level testResult =
-    case Debug.log "viewTest" (TestResults.results testResult) of
-        [] ->
-            Element.el [ indent ] <|
-                Element.row []
-                    [ icon (TestResults.status testResult)
-                    , Element.text (TestResults.testName testResult)
-                    ]
-
-        childTests ->
-            let
-                children =
-                    [ Element.row []
-                        [ icon (TestResults.status testResult)
-                        , Element.text (TestResults.testName testResult)
-                        ]
-                    ]
-                        ++ List.map (viewTest (level + 1)) childTests
-            in
-            Element.column [ indent ] children
+    Element.row [ indent level ]
+        [ icon (TestResults.status testResult)
+        , Element.text (TestResults.testName testResult)
+        ]
+        :: List.concatMap (viewTest (level + 1)) (TestResults.results testResult)
 
 
 white =
@@ -154,7 +140,7 @@ view : Model -> Html.Html Msg
 view model =
     Element.layout [ Element.explain Debug.todo ] <|
         Element.column [ Font.color white ] <|
-            List.map viewTopLevelTest (TestResults.toList model.testResults)
+            List.concatMap (viewTest 0) (TestResults.toList model.testResults)
 
 
 subscriptions : Model -> Sub Msg
