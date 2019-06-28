@@ -4,6 +4,7 @@ module TestResults exposing
     , TestStatus(..)
     , add
     , empty
+    , id
     , results
     , status
     , testName
@@ -27,14 +28,16 @@ type alias TestLocation =
 
 
 type alias SuiteInternals =
-    { name : String
+    { id : Int
+    , name : String
     , location : TestLocation
     , results : OrderedDict String Result
     }
 
 
 type alias TestInternals =
-    { name : String
+    { id : Int
+    , name : String
     , location : TestLocation
     , status : TestStatus
     }
@@ -49,11 +52,17 @@ type TestStatus
 
 
 type TestResults
-    = TestResults (OrderedDict String Result)
+    = TestResults TestResultsInternal
+
+
+type alias TestResultsInternal =
+    { nextResultId : Int
+    , results : OrderedDict String Result
+    }
 
 
 empty =
-    TestResults OrderedDict.empty
+    TestResults { nextResultId = 0, results = OrderedDict.empty }
 
 
 status result =
@@ -85,50 +94,80 @@ results result =
 
 
 toList : TestResults -> List Result
-toList (TestResults testResults) =
-    OrderedDict.values testResults
+toList (TestResults internal) =
+    OrderedDict.values internal.results
 
 
 add : String -> List String -> TestLocation -> TestStatus -> TestResults -> TestResults
-add name suitePath location testStatus (TestResults testResults) =
+add name suitePath location testStatus (TestResults internal) =
     let
         testInternals =
-            { name = name
+            { id = 0
+            , name = name
             , location = location
             , status = testStatus
             }
+
+        ( lastResultId, testResults ) =
+            addTest
+                testInternals
+                internal.nextResultId
+                suitePath
+                internal.results
     in
-    TestResults (addTest testInternals suitePath testResults)
+    TestResults
+        { internal
+            | nextResultId = lastResultId + 1
+            , results = testResults
+        }
 
 
-addTest : TestInternals -> List String -> OrderedDict String Result -> OrderedDict String Result
-addTest testInternals suitePath testResults =
+id : Result -> Int
+id result =
+    case result of
+        Test internals ->
+            internals.id
+
+        Suite internals ->
+            internals.id
+
+
+addTest : TestInternals -> Int -> List String -> OrderedDict String Result -> ( Int, OrderedDict String Result )
+addTest testInternals nextResultId suitePath testResults =
     case suitePath of
         [] ->
-            OrderedDict.insert testInternals.name (Test testInternals) testResults
+            let
+                testInternals_ =
+                    { testInternals | id = nextResultId }
+            in
+            ( nextResultId, OrderedDict.insert testInternals_.name (Test testInternals_) testResults )
 
         suiteName :: rest ->
             case OrderedDict.get suiteName testResults of
                 Just (Test test_) ->
-                    testResults
+                    ( nextResultId - 1, testResults )
 
                 Just (Suite suite) ->
                     let
-                        results_ =
-                            addTest testInternals rest suite.results
+                        ( lastResultId, results_ ) =
+                            addTest testInternals nextResultId rest suite.results
 
                         suite_ =
                             Suite { suite | results = results_ }
                     in
-                    OrderedDict.insert suite.name suite_ testResults
+                    ( lastResultId, OrderedDict.insert suite.name suite_ testResults )
 
                 Nothing ->
                     let
+                        ( lastResultId, results_ ) =
+                            addTest testInternals (nextResultId + 1) rest OrderedDict.empty
+
                         suite =
                             Suite
-                                { name = suiteName
+                                { id = nextResultId
+                                , name = suiteName
                                 , location = ( Nothing, Nothing )
-                                , results = addTest testInternals rest OrderedDict.empty
+                                , results = results_
                                 }
                     in
-                    OrderedDict.insert suiteName suite testResults
+                    ( lastResultId, OrderedDict.insert suiteName suite testResults )

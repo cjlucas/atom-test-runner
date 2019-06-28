@@ -1,10 +1,12 @@
 module Main exposing (main)
 
 import Browser
-import Element
+import Dict exposing (Dict)
+import Element exposing (alignLeft, alignRight)
+import Element.Events exposing (onClick)
 import Element.Font as Font
 import Html exposing (span, text)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, style)
 import Ports
 import TestResults exposing (TestResults)
 
@@ -28,11 +30,32 @@ main =
 
 
 type alias Model =
-    { testResults : TestResults }
+    { testResults : TestResults
+    , testResultsViewState : Dict Int TestResultViewState
+    }
+
+
+type alias TestResultViewState =
+    { collapsed : Bool
+    }
+
+
+defaultTestResultViewState =
+    { collapsed = False }
+
+
+testResultViewState id testResultsViewState =
+    case Dict.get id testResultsViewState of
+        Just viewState ->
+            viewState
+
+        Nothing ->
+            defaultTestResultViewState
 
 
 type Msg
     = InsertTest Ports.Test
+    | TestResultClicked Int
 
 
 mockTests =
@@ -48,7 +71,7 @@ mockTests =
 
 
 init flags =
-    Debug.log "in init" ( { testResults = TestResults.empty }, Cmd.none )
+    Debug.log "in init" ( { testResults = TestResults.empty, testResultsViewState = Dict.empty }, Cmd.none )
 
 
 insertTest : Ports.Test -> Model -> Model
@@ -77,9 +100,19 @@ insertTest portTest model =
 
 update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
-    case msg of
+    case Debug.log "msg" msg of
         InsertTest portTest ->
             ( insertTest portTest model, Cmd.none )
+
+        TestResultClicked id ->
+            let
+                viewState =
+                    testResultViewState id model.testResultsViewState
+
+                testResultsViewState =
+                    Dict.insert id { viewState | collapsed = not viewState.collapsed } model.testResultsViewState
+            in
+            ( { model | testResultsViewState = testResultsViewState }, Cmd.none )
 
 
 edges =
@@ -116,20 +149,59 @@ icon status =
         Element.none
 
 
+triangle collapsed =
+    let
+        icon_ =
+            if collapsed then
+                Element.htmlAttribute (class "icon icon-triangle-right")
+
+            else
+                Element.htmlAttribute (class "icon icon-triangle-down")
+    in
+    Element.el [ icon_, Font.color white ] Element.none
+
+
 indent level =
-    Element.paddingEach { edges | left = level * 20 }
+    Element.paddingEach { edges | left = level * 15 }
 
 
-viewTopLevelTest =
-    viewTest 0
+viewTest indentLevel testResultsViewState testResult =
+    let
+        isCollapsed =
+            testResultViewState (TestResults.id testResult) testResultsViewState
+                |> .collapsed
 
+        childResults =
+            if isCollapsed then
+                []
 
-viewTest level testResult =
-    Element.row [ indent level ]
-        [ icon (TestResults.status testResult)
-        , Element.text (TestResults.testName testResult)
+            else
+                List.concatMap
+                    (viewTest (indentLevel + 1) testResultsViewState)
+                    (TestResults.results testResult)
+
+        dropdownTriangle =
+            if TestResults.results testResult |> List.isEmpty then
+                Element.el [ Element.width (Element.px 20) ] Element.none
+
+            else
+                triangle isCollapsed
+    in
+    Element.row
+        [ indent indentLevel
+        , onClick (TestResultClicked (TestResults.id testResult))
+        , Element.width Element.fill
+        , Element.htmlAttribute (style "cursor" "pointer")
         ]
-        :: List.concatMap (viewTest (level + 1)) (TestResults.results testResult)
+        [ Element.row [ Element.width Element.fill ]
+            [ Element.row [ alignLeft ]
+                [ dropdownTriangle
+                , Element.text (TestResults.testName testResult)
+                ]
+            , Element.el [ alignRight ] (icon (TestResults.status testResult))
+            ]
+        ]
+        :: childResults
 
 
 white =
@@ -139,8 +211,8 @@ white =
 view : Model -> Html.Html Msg
 view model =
     Element.layout [ Element.explain Debug.todo ] <|
-        Element.column [ Font.color white ] <|
-            List.concatMap (viewTest 0) (TestResults.toList model.testResults)
+        Element.column [ Font.color white, Element.width Element.fill ] <|
+            List.concatMap (viewTest 0 model.testResultsViewState) (TestResults.toList model.testResults)
 
 
 subscriptions : Model -> Sub Msg
